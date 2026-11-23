@@ -137,6 +137,17 @@ New GitHub repo `Jerry256254/barist.8.1`, HF `KucLab/Barist.8.1`, tag `barist-8.
 | Category head: everything lands in "hate" | **per-category pos_weight in the sigmoid BCE (rare cats upweighted up to 25x)** |
 | Latency claim 5.3 ms was our hardware | README now states hardware explicitly: **5.7 ms/text on the dev CPU (ONNX/CPU pipeline), ~40 ms on the reviewer's older CPU — always local/offline vs network APIs** |
 
+### Performance charts (reports/figs/)
+
+![Release gates: Barist.7 vs Barist.8.1](reports/figs/gates_b7_vs_b81.png)
+![Latency per text](reports/figs/latency_b81.png)
+![Size / params](reports/figs/size_params_b81.png)
+![Category head recall](reports/figs/cat_recall_b81.png)
+
+Sources: `reports/gates.json` (Barist.7), `reports/gates_hf.json` (Barist.8.1),
+`reports/benchmark_cpu.json`, `reports/bench_b81.json` + ONNX export runs.
+Regenerate: `python scripts/make_figs_b81.py`.
+
 Gates are re-measured on the purged model in `reports/gates_hf.json` (tag `Barist.8.1`).
 Known remaining limitations: single-text window (multi-turn grooming needs conversation
 context — planned for Barist.9 together with distillation of the 118M encoder into a
