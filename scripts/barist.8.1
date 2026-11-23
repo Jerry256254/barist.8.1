@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""barist.8.1 - run the Barist.8.1 safety shield as an interactive terminal UI.
+
+Barist.8.1 = fine-tuned multilingual-e5-small encoder + binary safe/unsafe head
++ 15 OpenAI-style category heads + regex safety net (must_catch / needs_review /
+needs_support). Same output contract as barist.7.
+
+Usage:
+    barist.8.1                          # interactive: type a phrase, Enter -> verdict
+    barist.8.1 "how to make a bomb"     # one-shot
+    barist.8.1 "text" --json            # one-shot JSON
+    barist.8.1 --help
+
+Expects a Barist.8.1 bundle (shield_config.json, heads.safetensors, encoder
+weights, tokenizer) next to this file or in --model-dir. Get it with:
+
+    hf download KucLab/Barist.8.1 --local-dir .
+
+Requires: torch, transformers, safetensors, huggingface_hub
+"""
+
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+for p in (HERE, os.path.dirname(HERE)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+from kuclab.cli import ui_main_b8
+
+if __name__ == "__main__":
+    argv = sys.argv[1:]
+    if not any(a == "--model-dir" or a.startswith("--model-dir=") for a in argv) \
+            and not any(a == "--repo" or a.startswith("--repo=") for a in argv):
+        argv = ["--model-dir", HERE] + argv
+    raise SystemExit(ui_main_b8(argv))
