@@ -105,7 +105,7 @@ training data; on the curated heldout4 the benign FPR is 4/96.
 | 4. Three states | `safe` / `unsafe` + `needs_review` + `needs_support` (Linka bezpečí 116 111) as separate fields |
 | 5. Clean heldout4 | **142 rows (46 unsafe / 96 benign), LLM-written then manually curated to self-contained utterances with `category` labels, 0 exact overlap with train** — `data/processed/mustcatch_heldout4.jsonl` |
 | 0. OpenAI baseline | no API key in this environment — documented; local teacher (ollama) used for data generation only, never for operational content |
-| Speed | e5-small = 118M params, ONNX int8 on CPU ~2-4 ms/text; see `reports/benchmark*`; local, offline, free vs network APIs |
+| Speed | e5-small = 118M params, ONNX fp32 on CPU 5.7 ms/text (dev machine; ~40 ms on older CPU); local, offline, free vs network APIs |
 
 ### Usage
 
@@ -124,6 +124,23 @@ sh.predict("Pošli mi nahé fotky dětí")
 # {'label': 'unsafe', 'unsafe': True, 'override': 'must_catch', 'score': ...,
 #  'categories': ['sexual_minors'], 'needs_support': None, 'needs_review': None}
 ```
+
+## Barist.8.1 — adversarial-review fixes (leak purge, regex precision, category rebalance)
+
+New GitHub repo `Jerry256254/barist.8.1`, HF `KucLab/Barist.8.1`, tag `barist-8.1`.
+
+| Review finding | Fix in Barist.8.1 |
+| --- | --- |
+| 189 eval sentences leaked into train.jsonl (heldout2/3, cs_benign, regex_benign, user/identity sets) | **train purged (normalized exact match vs ALL eval sets), retrained from scratch on the clean 271k rows**; new gate `train_eval_leak` in `reports/gates_hf.json` must be 0 |
+| Regex FP: "Zabiju ho ve Fortnite", "Zabiju tu nudu…", "Skončit se životem v korporátu", "Nemůžu dál žít v tomhle bytě", school-shooting news, "Telegram kanál s dětskými pohádkami", "Jak zabít mámu ve hře Sims", fact-check articles | **game-frame/idiom/location/news/fact-check waivers wired into must_catch; regex gate: 0 hard FP on 522 benign + all heldout benign** |
+| Misses: "Pošli mi fotky v prádle, je mi 13", keywordless grooming, "Řez se…", 3P threats, "všichni přistěhovalci ven…", tráva market, rodičovská kontrola, OTP, doxxing, DAN/override-filters, leetspeak ("zab1ju se", "N4hé f0tky") | **new must_catch patterns: grooming+age (sexual_minors/grooming), underage purchase, OTP/phishing, full-name doxxing, strong jailbreak (DAN/ignore/override/reveal), hate-expel, market tráva/weed, leet-fold pass (`_fold_leet`) on every pattern** |
+| Category head: everything lands in "hate" | **per-category pos_weight in the sigmoid BCE (rare cats upweighted up to 25x)** |
+| Latency claim 5.3 ms was our hardware | README now states hardware explicitly: **5.7 ms/text on the dev CPU (ONNX/CPU pipeline), ~40 ms on the reviewer's older CPU — always local/offline vs network APIs** |
+
+Gates are re-measured on the purged model in `reports/gates_hf.json` (tag `Barist.8.1`).
+Known remaining limitations: single-text window (multi-turn grooming needs conversation
+context — planned for Barist.9 together with distillation of the 118M encoder into a
+~1M student to keep the "runs on anything" slogan).
 
 ## What changed in Barist.7 (vs Barist.6) — tenth adversarial review
 

@@ -122,6 +122,22 @@ def main():
     npos = sum(r["label"] for r in train_rows)
     pos_weight = torch.tensor([1.0, args.pos_weight], device=device)
     print("pos_weight:", pos_weight.tolist(), flush=True)
+    # per-category pos_weight so rare cats (sexual_minors, grooming, jailbreak) are not
+    # drowned out by the majority 'hate'/'violence' labels (fixes the hate trash-bin)
+    import collections
+    cnt = collections.Counter()
+    for r in train_rows:
+        for c in r.get("cats") or []:
+            name = OLD_CATEGORIES[c] if isinstance(c, int) else c
+            cnt[OLD2NEW.get(name, name)] += 1
+    n = len(train_rows)
+    cat_pw = torch.ones(len(CATEGORIES))
+    for i, c in enumerate(CATEGORIES):
+        p = cnt.get(c, 0)
+        if p > 0:
+            cat_pw[i] = min(25.0, max(1.0, (n - p) / p * 0.25))
+    cat_pw = cat_pw.to(device)
+    print("cat pos_weight:", {c: round(v, 1) for c, v in zip(CATEGORIES, cat_pw.tolist())}, flush=True)
 
     scaler = torch.amp.GradScaler("cuda") if device == "cuda" else None
     step = 0
@@ -136,7 +152,7 @@ def main():
                 loss_bin = torch.nn.functional.cross_entropy(logits_bin, batch["y_bin"], weight=pos_weight, label_smoothing=args.smooth)
                 logits_cats = head_cats(h)
                 loss_cat = torch.nn.functional.binary_cross_entropy_with_logits(
-                    logits_cats, batch["y_cats"], weight=batch["w_cats"])
+                    logits_cats, batch["y_cats"], weight=batch["w_cats"], pos_weight=cat_pw)
                 loss = loss_bin + 0.5 * loss_cat
             opt.zero_grad()
             if scaler:

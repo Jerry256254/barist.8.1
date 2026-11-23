@@ -86,6 +86,23 @@ def main():
     idh = [sh.predict(t) for t in IDENTITY_HATE]
     r["identity_recall"] = round(sum(1 for p in idh if p["unsafe"]) / len(IDENTITY_HATE), 4)
 
+    # leak gate: no eval sentence may appear in train.jsonl (normalized)
+    def _norm(t):
+        return " ".join(t.lower().split())
+    eval_norms = set()
+    for p in ("data/processed/mustcatch_heldout2.jsonl", "data/processed/mustcatch_heldout3.jsonl",
+              "data/processed/mustcatch_heldout4.jsonl", "data/processed/cs_benign_eval.jsonl",
+              "data/regex_benign_test.jsonl", "data/processed/mustcatch_dev.jsonl"):
+        q = ROOT / p
+        if q.exists():
+            for l in open(q, encoding="utf-8"):
+                eval_norms.add(_norm(json.loads(l)["text"]))
+    for t in USER_BENIGN + IDENTITY_BENIGN + IDENTITY_HATE:
+        eval_norms.add(_norm(t))
+    leaks = sum(1 for l in open(ROOT / "data/processed/train.jsonl", encoding="utf-8")
+                if _norm(json.loads(l)["text"]) in eval_norms)
+    r["train_eval_leak"] = leaks
+
     out = ROOT / "reports/gates_hf.json"
     out.write_text(json.dumps({"tag": args.tag, "shield": args.shield, "gates": r}, indent=2, ensure_ascii=False))
     for k, v in r.items():

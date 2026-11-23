@@ -1,3 +1,24 @@
+## Barist.8.1 — adversarial review of Barist.8 (released; git tag `barist-8.1`, HF `KucLab/Barist.8.1`, GH `Jerry256254/barist.8.1`)
+
+- **Leak purge**: 189 eval sentences (heldout2/3, cs_benign, regex_benign, user/identity
+  sets) removed from train.jsonl; model retrained from scratch on the clean 271,056 rows
+  (checkpoint `checkpoints_b81a`, 2 epochs, per-category pos_weight in the sigmoid BCE).
+  New gate `train_eval_leak` (must be 0) in `reports/gates_hf.json`.
+- **Regex precision (Barist.8.1)**: waivers for game frames (Fortnite/Sims/…), kill
+  idioms ("zabiju tu nudu"), metaphorical self-harm locations ("…v korporátu/bytě"),
+  news frames (school-shooting news, `zprav\w*`), fairy-tale telegram channels,
+  fact-check/debunk articles; `_rx` normalizes over-escaped backslash runs; every
+  pattern is also matched on a leet-folded copy (`zab1ju se`, `N4hé f0tky`).
+  Regex gate: 0 hard FP on 522 benign + all heldout benign rows.
+- **New must_catch classes**: grooming+age ("je mi 13" + fotky/prádlo -> sexual_minors),
+  underage purchase / parental-control bypass (illicit), OTP/phishing request
+  (cybercrime_fraud), full-name doxxing (illicit), strong jailbreak (DAN mode, ignore
+  instructions, override filters, reveal password -> jailbreak_injection hard block),
+  hate-expel ("všichni přistěhovalci ven z republiky"), market tráva/weed/konopí.
+- `scripts/censer.py` now delegates the regex layer to `kuclab.langdetect`
+  (single source of truth).
+- README latency made hardware-explicit (5.7 ms/text dev CPU; ~40 ms reviewer CPU).
+
 ## Barist.8 — flagship: fine-tuned multilingual-e5-small encoder (released; git tag `barist-8`, HF `KucLab/Barist.8`)
 
 Architecture change: the from-scratch 903K transformer is replaced by a fine-tuned
